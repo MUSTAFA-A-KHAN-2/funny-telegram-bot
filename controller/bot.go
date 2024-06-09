@@ -3,6 +3,7 @@ package controller
 import (
 	"fmt"
 	"log"
+	"strings"
 	"sync"
 
 	"github.com/MUSTAFA-A-KHAN/funny-telegram-bot/model"
@@ -34,44 +35,82 @@ func StartBot(token string) error {
 	}
 
 	for update := range updates {
-		if update.Message == nil {
-			continue
+		if update.Message != nil {
+			log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
+
+			switch update.Message.Command() {
+			case "start":
+				buttons := []tgbotapi.InlineKeyboardButton{
+					tgbotapi.NewInlineKeyboardButtonData("🔍 Setup", "setup"),
+				}
+				view.SendMessageWithButtons(bot, update.Message.Chat.ID, "Click 'Setup' to get a joke setup.", buttons)
+			default:
+				userJokes.RLock()
+				_, exists := userJokes.data[update.Message.Chat.ID]
+				userJokes.RUnlock()
+				if exists {
+					handleGuess(bot, update.Message)
+				} else {
+					view.SendMessage(bot, update.Message.Chat.ID, "No joke setup found. Click 'Setup' to get a new joke.")
+				}
+			}
 		}
 
-		log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
-		fmt.Println("update.Message.Command():::::::::::::::::::::::::::;", update.Message.Command())
-
-		switch update.Message.Command() {
-		case "start":
-			view.SendMessage(bot, update.Message.Chat.ID, "Hi! Use /joke to get a joke setup and /punch to get the punchline.")
-		case "help":
-			view.SendMessage(bot, update.Message.Chat.ID, "Use /joke to get a joke setup and /punch to get the punchline.")
-		case "joke":
-			joke, err := model.GetJoke()
-			if err != nil {
-				view.SendMessage(bot, update.Message.Chat.ID, "Failed to get a joke.")
-				continue
+		if update.CallbackQuery != nil {
+			callback := update.CallbackQuery
+			switch callback.Data {
+			case "setup":
+				joke, err := model.GetJoke()
+				if err != nil {
+					view.SendMessage(bot, callback.Message.Chat.ID, "Failed to get a joke.")
+					continue
+				}
+				userJokes.Lock()
+				userJokes.data[callback.Message.Chat.ID] = joke
+				userJokes.Unlock()
+				buttons := []tgbotapi.InlineKeyboardButton{
+					tgbotapi.NewInlineKeyboardButtonData("🎭 Punchline", "punchline"),
+				}
+				view.SendMessageWithButtons(bot, callback.Message.Chat.ID, joke.Setup, buttons)
+				fmt.Println("Punchline::::", joke.Punchline)
+			case "punchline":
+				userJokes.RLock()
+				joke, exists := userJokes.data[callback.Message.Chat.ID]
+				userJokes.RUnlock()
+				if exists {
+					buttons := []tgbotapi.InlineKeyboardButton{
+						tgbotapi.NewInlineKeyboardButtonData("🔍 Setup", "setup"),
+					}
+					view.SendMessageWithButtons(bot, callback.Message.Chat.ID, joke.Punchline, buttons)
+					userJokes.Lock()
+					delete(userJokes.data, callback.Message.Chat.ID)
+					userJokes.Unlock()
+				} else {
+					view.SendMessage(bot, callback.Message.Chat.ID, "No joke setup found. Click 'Setup' to get a new joke.")
+				}
 			}
-			userJokes.Lock()
-			userJokes.data[update.Message.Chat.ID] = joke
-			userJokes.Unlock()
-			view.SendMessage(bot, update.Message.Chat.ID, joke.Setup)
-		case "punch":
-			userJokes.RLock()
-			joke, exists := userJokes.data[update.Message.Chat.ID]
-			userJokes.RUnlock()
-			if !exists {
-				view.SendMessage(bot, update.Message.Chat.ID, "Please request a joke setup first using /joke.")
-				continue
-			}
-			view.SendMessage(bot, update.Message.Chat.ID, joke.Punchline)
-			userJokes.Lock()
-			delete(userJokes.data, update.Message.Chat.ID)
-			userJokes.Unlock()
-		default:
-			view.SendMessage(bot, update.Message.Chat.ID, "uh-OH")
+			bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
 		}
 	}
 
 	return nil
+}
+
+func handleGuess(bot *tgbotapi.BotAPI, msg *tgbotapi.Message) {
+	userJokes.RLock()
+	joke, exists := userJokes.data[msg.Chat.ID]
+	userJokes.RUnlock()
+	if exists {
+		if strings.EqualFold(msg.Text, joke.Punchline) {
+			buttons := []tgbotapi.InlineKeyboardButton{
+				tgbotapi.NewInlineKeyboardButtonData("🎭 Punchline", "punchline"),
+			}
+			view.SendMessageWithButtons(bot, msg.Chat.ID, "Congratulations! You guessed it right!", buttons)
+			userJokes.Lock()
+			delete(userJokes.data, msg.Chat.ID)
+			userJokes.Unlock()
+		} else {
+			view.SendMessage(bot, msg.Chat.ID, "That's not correct. Try again or click 'Punchline' to reveal the punchline.")
+		}
+	}
 }
