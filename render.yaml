@@ -1,5 +1,5 @@
 services:
-  - type: web
+  - type: worker
     name: restapi
     repo: https://github.com/MUSTAFA-A-KHAN/funny-telegram-bot.git
     plan: free
