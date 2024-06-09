@@ -105,12 +105,12 @@ func handleGuess(bot *tgbotapi.BotAPI, msg *tgbotapi.Message) {
 			buttons := []tgbotapi.InlineKeyboardButton{
 				tgbotapi.NewInlineKeyboardButtonData("🎭 Punchline", "punchline"),
 			}
-			view.SendMessageWithButtons(bot, msg.Chat.ID, "HAHA :) XDXD! You guessed it right!", buttons)
+			view.SendMessageWithButtons(bot, msg.Chat.ID, "😁😁 :) XDXD! You guessed it right!🏆", buttons)
 			userJokes.Lock()
 			delete(userJokes.data, msg.Chat.ID)
 			userJokes.Unlock()
 		} else {
-			view.SendMessage(bot, msg.Chat.ID, "That's not correct. Try again or click 'Punchline' to reveal the punchline.")
+			view.SendMessage(bot, msg.Chat.ID, "Hushhh. Try again or click 'Punchline' to reveal the punchline.")
 		}
 	}
 }
