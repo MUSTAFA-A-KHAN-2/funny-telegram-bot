@@ -1,0 +1,12 @@
+previewsEnabled: true
+services:
+  - type: web
+    name: restapi
+    repo: https://github.com/MUSTAFA-A-KHAN/funny-telegram-bot.git
+    plan: free
+    branch: master
+    runtime: go
+    startCommand: ./restapi
+    buildCommand: |
+      go mod tidy
+      go build
