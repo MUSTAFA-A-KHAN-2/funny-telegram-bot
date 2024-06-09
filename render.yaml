@@ -5,7 +5,7 @@ services:
     plan: free
     branch: master
     runtime: go
-    startCommand: ./restapi
+    startCommand: ./funny-telegram-bot
     buildCommand: |
       go mod tidy
       go build
