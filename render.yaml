@@ -3,7 +3,7 @@ services:
     name: restapi
     repo: https://github.com/MUSTAFA-A-KHAN/funny-telegram-bot.git
     plan: free
-    branch: master
+    branch: main
     runtime: go
     startCommand: ./funny-telegram-bot
     buildCommand: |
