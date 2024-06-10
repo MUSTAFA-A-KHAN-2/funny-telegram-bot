@@ -106,7 +106,7 @@ func handleGuess(bot *tgbotapi.BotAPI, msg *tgbotapi.Message) {
 	if exists {
 		if strings.EqualFold(msg.Text, joke.Punchline) {
 			buttons := []tgbotapi.InlineKeyboardButton{
-				tgbotapi.NewInlineKeyboardButtonData("🎭 Punchline", "punchline"),
+				tgbotapi.NewInlineKeyboardButtonData("🔍 Setup", "setup"),
 			}
 			view.SendMessageWithButtons(bot, msg.Chat.ID, "😁😁 XDXD! You guessed it right!🏆", buttons)
 			userJokes.Lock()
