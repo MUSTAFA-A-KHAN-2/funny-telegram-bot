@@ -3,6 +3,7 @@ package controller
 import (
 	"fmt"
 	"log"
+	"net/http"
 	"strings"
 	"sync"
 
@@ -18,6 +19,8 @@ var userJokes = struct {
 
 // StartBot initializes and starts the bot
 func StartBot(token string) error {
+	go startHTTPServer() //start http server with go routine
+
 	bot, err := tgbotapi.NewBotAPI(token)
 	if err != nil {
 		return err
@@ -113,4 +116,12 @@ func handleGuess(bot *tgbotapi.BotAPI, msg *tgbotapi.Message) {
 			view.SendMessage(bot, msg.Chat.ID, "Hushhh. Try again or click 'Punchline' to reveal the punchline.")
 		}
 	}
+}
+
+// startHTTPServer starts a simple HTTP server for health checks
+func startHTTPServer() {
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, "Bot is running!")
+	})
+	log.Fatal(http.ListenAndServe(":8080", nil))
 }
