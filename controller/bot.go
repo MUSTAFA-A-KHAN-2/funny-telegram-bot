@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"strings"
 	"sync"
 
 	"github.com/MUSTAFA-A-KHAN/funny-telegram-bot/model"
+	"github.com/MUSTAFA-A-KHAN/funny-telegram-bot/service"
 	"github.com/MUSTAFA-A-KHAN/funny-telegram-bot/view"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 )
@@ -68,6 +68,10 @@ func StartBot(token string) error {
 					view.SendMessage(bot, callback.Message.Chat.ID, "Failed to get a joke.")
 					continue
 				}
+
+				ans := joke.Punchline
+				fmt.Println("answer::::", ans)
+				bot.AnswerCallbackQuery(tgbotapi.NewCallbackWithAlert(callback.ID, ans))
 				userJokes.Lock()
 				userJokes.data[callback.Message.Chat.ID] = joke
 				userJokes.Unlock()
@@ -99,12 +103,14 @@ func StartBot(token string) error {
 	return nil
 }
 
+/** responds to the user inputs*/
 func handleGuess(bot *tgbotapi.BotAPI, msg *tgbotapi.Message) {
 	userJokes.RLock()
 	joke, exists := userJokes.data[msg.Chat.ID]
 	userJokes.RUnlock()
 	if exists {
-		if strings.EqualFold(msg.Text, joke.Punchline) {
+		// if strings.EqualFold(msg.Text, joke.Punchline) {
+		if service.NormalizeAndCompare(msg.Text, joke.Punchline) {
 			buttons := []tgbotapi.InlineKeyboardButton{
 				tgbotapi.NewInlineKeyboardButtonData("🔍 Setup", "setup"),
 			}
@@ -113,7 +119,10 @@ func handleGuess(bot *tgbotapi.BotAPI, msg *tgbotapi.Message) {
 			delete(userJokes.data, msg.Chat.ID)
 			userJokes.Unlock()
 		} else {
-			view.SendMessage(bot, msg.Chat.ID, "Hushhh. Try again or click 'Punchline' to reveal the punchline.")
+			buttons := []tgbotapi.InlineKeyboardButton{
+				tgbotapi.NewInlineKeyboardButtonData("🎭 Punchline", "punchline"),
+			}
+			view.SendMessageWithButtons(bot, msg.Chat.ID, "Hushhh. Try again or click 'Punchline' to reveal the punchline.", buttons)
 		}
 	}
 }
