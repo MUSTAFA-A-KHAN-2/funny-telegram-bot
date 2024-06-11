@@ -63,23 +63,30 @@ func StartBot(token string) error {
 			callback := update.CallbackQuery
 			switch callback.Data {
 			case "setup":
-				joke, err := model.GetJoke()
-				if err != nil {
-					view.SendMessage(bot, callback.Message.Chat.ID, "Failed to get a joke.")
-					continue
-				}
+				userJokes.RLock()
+				_, exists := userJokes.data[callback.Message.Chat.ID]
+				userJokes.RUnlock()
+				if exists {
+					bot.AnswerCallbackQuery(tgbotapi.NewCallbackWithAlert(callback.ID, "You've already got a joke setup. Guess the punchline or press 'Punchline' to reveal it."))
+				} else {
+					joke, err := model.GetJoke()
+					if err != nil {
+						view.SendMessage(bot, callback.Message.Chat.ID, "Failed to get a joke.")
+						continue
+					}
 
-				ans := joke.Punchline
-				fmt.Println("answer::::", ans)
-				bot.AnswerCallbackQuery(tgbotapi.NewCallbackWithAlert(callback.ID, ans))
-				userJokes.Lock()
-				userJokes.data[callback.Message.Chat.ID] = joke
-				userJokes.Unlock()
-				buttons := []tgbotapi.InlineKeyboardButton{
-					tgbotapi.NewInlineKeyboardButtonData("🎭 Punchline", "punchline"),
+					ans := joke.Punchline
+					fmt.Println("answer::::", ans)
+					// bot.AnswerCallbackQuery(tgbotapi.NewCallbackWithAlert(callback.ID, ans))/**uncomment if you need it for multiusers */
+					userJokes.Lock()
+					userJokes.data[callback.Message.Chat.ID] = joke
+					userJokes.Unlock()
+					buttons := []tgbotapi.InlineKeyboardButton{
+						tgbotapi.NewInlineKeyboardButtonData("🎭 Punchline", "punchline"),
+					}
+					view.SendMessageWithButtons(bot, callback.Message.Chat.ID, joke.Setup, buttons)
+					fmt.Println("Punchline::::", joke.Punchline)
 				}
-				view.SendMessageWithButtons(bot, callback.Message.Chat.ID, joke.Setup, buttons)
-				fmt.Println("Punchline::::", joke.Punchline)
 			case "punchline":
 				userJokes.RLock()
 				joke, exists := userJokes.data[callback.Message.Chat.ID]
@@ -93,7 +100,7 @@ func StartBot(token string) error {
 					delete(userJokes.data, callback.Message.Chat.ID)
 					userJokes.Unlock()
 				} else {
-					view.SendMessage(bot, callback.Message.Chat.ID, "No joke setup found. Click 'Setup' to get a new joke.")
+					bot.AnswerCallbackQuery(tgbotapi.NewCallbackWithAlert(callback.ID, "No joke setup found. Click 'Setup' to get a new joke."))
 				}
 			}
 			bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
